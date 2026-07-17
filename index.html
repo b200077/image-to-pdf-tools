@@ -35,7 +35,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 25px;
-            max-width: 800px;
+            max-width: 900px; /* 稍微加寬以容納三個卡片 */
             width: 100%;
         }
         .card {
@@ -58,12 +58,19 @@
             margin-top: 0;
             color: #4caf50;
         }
-        /* Excel 卡片可以用藍色系做區隔 */
+        /* Excel 卡片用藍色系做區隔 */
         .card.excel-card:hover {
             border-color: #2196F3;
         }
         .card.excel-card h2 {
             color: #2196F3;
+        }
+        /* 文字提取卡片用橘黃色系做區隔 */
+        .card.text-card:hover {
+            border-color: #ff9800;
+        }
+        .card.text-card h2 {
+            color: #ff9800;
         }
         .card p {
             color: #ccc;
@@ -84,6 +91,10 @@
             background-color: rgba(33, 150, 243, 0.1);
             color: #2196F3;
         }
+        .text-card .badge {
+            background-color: rgba(255, 152, 0, 0.1);
+            color: #ff9800;
+        }
     </style>
 </head>
 <body>
@@ -94,18 +105,22 @@
 </div>
 
 <div class="grid">
-    <!-- 圖片轉 PDF 卡片 -->
     <a href="image-pdf.html" class="card">
         <span class="badge">IMAGE ➔ PDF</span>
         <h2>圖片轉 PDF 工具</h2>
         <p>將多張 JPG、PNG 圖片在本地打包成單一 PDF。適合處理證件、機密合約掃描檔。</p>
     </a>
 
-    <!-- Excel 轉 CSV/JSON 卡片 -->
     <a href="excel-tool.html" class="card excel-card">
         <span class="badge">EXCEL ➔ CSV / JSON</span>
         <h2>Excel 轉換器</h2>
         <p>快速將 XLSX、XLS 檔案轉換成 CSV 或 JSON。100% 離線安全，商業機密不外洩。</p>
+    </a>
+
+    <a href="pdf-ppt-text.html" class="card text-card">
+        <span class="badge">PDF / PPTX ➔ TEXT</span>
+        <h2>本地文字提取器</h2>
+        <p>直接提取 PDF、PPTX 中的純文字。完全無需上傳，極速且安全地備份商務簡報或報告內容。</p>
     </a>
 </div>
 

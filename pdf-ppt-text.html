@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF / PPTX 轉文字 - 極速本地隱私工具箱</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; }
+        .upload-area { border: 2px dashed #ccc; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; background: #fafafa; transition: 0.3s; }
+        .upload-area:hover { border-color: #007bff; background: #f0f7ff; }
+        #fileInput { display: none; }
+        #output { margin-top: 20px; white-space: pre-wrap; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #ddd; max-height: 500px; overflow-y: auto; }
+        .status { margin-top: 10px; font-weight: bold; color: #007bff; }
+        .page-break { color: #888; border-bottom: 1px dashed #ccc; margin: 15px 0; padding-bottom: 5px; font-size: 0.9em; }
+        .btn-copy { margin-top: 10px; padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; display: none; }
+    </style>
+</head>
+<body>
+
+    <h2>🔒 本地 PDF / PPTX 轉文字工具</h2>
+    <p>100% 本地瀏覽器解析，檔案絕不上傳，保護商務與個人隱私安全。</p>
+
+    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <p>點擊此處或將 PDF / PPTX 檔案拖曳至此</p>
+        <span style="font-size: 0.9em; color: #666;">（支援 .pdf, .pptx 格式）</span>
+        <input type="file" id="fileInput" accept=".pdf,.pptx">
+    </div>
+
+    <div id="status" class="status"></div>
+    <button id="copyBtn" class="btn-copy" onclick="copyText()">複製全部文字</button>
+    <div id="output" style="display: none;"></div>
+
+    <script>
+        // 設定 PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        const fileInput = document.getElementById('fileInput');
+        const statusDiv = document.getElementById('status');
+        const outputDiv = document.getElementById('output');
+        const copyBtn = document.getElementById('copyBtn');
+
+        fileInput.addEventListener('change', handleFile);
+
+        // 拖曳上傳支援
+        const uploadArea = document.querySelector('.upload-area');
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#007bff'; });
+        uploadArea.addEventListener('dragleave', () => uploadArea.style.borderColor = '#ccc');
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#ccc';
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                handleFile();
+            }
+        });
+
+        function handleFile() {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            statusDiv.textContent = "讀取檔案中...";
+            outputDiv.style.display = 'none';
+            copyBtn.style.display = 'none';
+            outputDiv.innerHTML = '';
+
+            const ext = file.name.split('.').pop().toLowerCase();
+
+            const reader = new FileReader();
+            if (ext === 'pdf') {
+                reader.onload = function(e) { processPDF(e.target.result); };
+                reader.readAsArrayBuffer(file);
+            } else if (ext === 'pptx') {
+                reader.onload = function(e) { processPPTX(e.target.result); };
+                reader.readAsArrayBuffer(file);
+            } else {
+                statusDiv.textContent = "不支援的檔案格式！只支援 .pdf 與 .pptx";
+            }
+        }
+
+        // --- PDF 解析邏輯 ---
+        async function processPDF(arrayBuffer) {
+            try {
+                statusDiv.textContent = "正在解析 PDF 文字...";
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = "";
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    
+                    fullText += `<div class="page-break">--- 第 ${i} 頁 ---</div>` + pageText + "\n";
+                }
+
+                showResult(fullText);
+            } catch (error) {
+                statusDiv.textContent = "PDF 解析失敗：" + error.message;
+            }
+        }
+
+        // --- PPTX 解析邏輯 (輕量級解壓 XML 解析) ---
+        async function processPPTX(arrayBuffer) {
+            try {
+                statusDiv.textContent = "正在解析 PPTX 文字...";
+                const zip = await JSZip.loadAsync(arrayBuffer);
+                
+                // 找出所有的 slide 檔案，並按順序排序
+                const slideFiles = Object.keys(zip.files)
+                    .filter(fileName => fileName.startsWith("ppt/slides/slide") && fileName.endsWith(".xml"))
+                    .sort((a, b) => {
+                        const numA = parseInt(a.match(/\d+/)[0]);
+                        const numB = parseInt(b.match(/\d+/)[0]);
+                        return numA - numB;
+                    });
+
+                if (slideFiles.length === 0) {
+                    statusDiv.textContent = "找不到簡報投影片內容。";
+                    return;
+                }
+
+                let fullText = "";
+                const parser = new DOMParser();
+
+                for (let i = 0; i < slideFiles.length; i++) {
+                    const slideXmlText = await zip.file(slideFiles[i]).async("string");
+                    const xmlDoc = parser.parseFromString(slideXmlText, "text/xml");
+                    
+                    // 提取 PPTX 中的文字標籤 <a:t>
+                    const textNodes = xmlDoc.getElementsByTagName("a:t");
+                    let slideText = [];
+                    for (let node of textNodes) {
+                        if (node.textContent.trim()) {
+                            slideText.push(node.textContent);
+                        }
+                    }
+
+                    fullText += `<div class="page-break">--- 第 ${i + 1} 頁 ---</div>` + slideText.join('\n') + "\n";
+                }
+
+                showResult(fullText);
+            } catch (error) {
+                statusDiv.textContent = "PPTX 解析失敗：" + error.message;
+            }
+        }
+
+        function showResult(htmlContent) {
+            statusDiv.textContent = "解析完成！";
+            outputDiv.innerHTML = htmlContent;
+            outputDiv.style.display = 'block';
+            copyBtn.style.display = 'inline-block';
+        }
+
+        function copyText() {
+            // 複製排除 HTML 標籤後的純文字
+            const tempEl = document.createElement('textarea');
+            tempEl.value = outputDiv.innerText;
+            document.body.appendChild(tempEl);
+            tempEl.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempEl);
+            alert('文字已成功複製到剪貼簿！');
+        }
+    </script>
+</body>
+</html>
