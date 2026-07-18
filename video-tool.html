@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎬 本地影片無損剪輯工具 - 極速本地隱私工具箱</title>
+    <script src="coi-serviceworker.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; line-height: 1.6; }
         .container { border: 1px solid #ccc; padding: 20px; border-radius: 8px; }
@@ -14,35 +15,34 @@
         button { padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
     </style>
-    <script src="coi-serviceworker.js"></script>
 </head>
 <body>
     <div class="container">
         <h2>🎬 本地影片無損剪輯工具 (秒速裁切)</h2>
         <p>狀態：<span id="status" class="status">正在載入 FFmpeg 核心...</span></p>
-        
+
         <input type="file" id="uploader" accept="video/*" disabled>
-        
+
         <div class="time-input">
             <label>開始時間：<input type="text" id="startTime" value="00:01:20" placeholder="hh:mm:ss"></label>
             <label>結束時間：<input type="text" id="endTime" value="00:10:45" placeholder="hh:mm:ss"></label>
         </div>
-        
+
         <button id="convertBtn" disabled>開始無損剪輯</button>
         <br><br>
-        
+
         <video id="outputVideo" controls width="100%" style="display:none;"></video>
         <br>
         <a id="downloadLink" style="display:none; margin-top:10px; display:inline-block; color:#007bff; font-weight:bold;" download="完美剪輯版.mp4">📥 下載剪輯版影片</a>
     </div>
 
-    <script src="coi-serviceworker.js"></script>
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
-    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+    <!-- 全部改為自架檔案，不再依賴 unpkg CDN，避免 COEP require-corp 擋掉跨網域 Worker -->
+    <script src="vendor/ffmpeg/ffmpeg.js"></script>
+    <script src="vendor/util/ffmpeg-util.js"></script>
 
     <script>
         const { FFmpeg } = FFmpegWASM;
-        const { fetchFile, toBlobURL } = FFmpegUtil;
+        const { fetchFile } = FFmpegUtil;
         const ffmpeg = new FFmpeg();
 
         const statusText = document.getElementById('status');
@@ -55,12 +55,12 @@
 
         ffmpeg.on('log', ({ message }) => console.log(message));
 
+        // 1. 初始化並載入 FFmpeg WebAssembly（全部走同網域，不需要 toBlobURL）
         async function loadFFmpeg() {
             try {
-                const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
                 await ffmpeg.load({
-                    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-                    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+                    coreURL: 'vendor/core/ffmpeg-core.js',
+                    wasmURL: 'vendor/core/ffmpeg-core.wasm',
                 });
                 statusText.innerText = "FFmpeg 載入成功！請選擇影片並輸入時間。";
                 uploader.disabled = false;
@@ -70,6 +70,7 @@
             }
         }
 
+        // 2. 處理檔案轉換
         convertBtn.addEventListener('click', async () => {
             const file = uploader.files[0];
             if (!file) return;
