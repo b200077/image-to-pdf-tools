@@ -3,40 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎬 本地影片無損剪輯工具 - 極速本地隱私工具箱</title>
+    <title>🎬 本地影音處理工具 - 極速本地隱私工具箱</title>
     <script src="coi-serviceworker.js"></script>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; line-height: 1.6; }
-        .container { border: 1px solid #ccc; padding: 20px; border-radius: 8px; }
-        .status { color: #666; font-style: italic; margin: 10px 0; }
-        .time-input { margin: 15px 0; }
-        .time-input label { margin-right: 10px; }
-        .time-input input { width: 100px; padding: 5px; text-align: center; }
-        button { padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; line-height: 1.6; background-color: #1a1a1a; color: #e0e0e0; }
+        .container { border: 1px solid #333; padding: 20px; border-radius: 8px; background-color: #242424; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .status { color: #aaa; font-style: italic; margin: 10px 0; }
+        .form-group { margin: 15px 0; }
+        .form-group label { margin-right: 10px; font-weight: bold; }
+        .time-input input { width: 100px; padding: 6px; text-align: center; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; }
+        select { padding: 6px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 14px; }
+        button { padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        button:disabled { background-color: #555; color: #aaa; cursor: not-allowed; }
+        input[type="file"] { margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>🎬 本地影片無損剪輯工具 (秒速裁切)</h2>
+        <h2>🎬 本地影音處理工具 (極速萬能轉檔)</h2>
         <p>狀態：<span id="status" class="status">正在載入 FFmpeg 核心...</span></p>
 
-        <input type="file" id="uploader" accept="video/*" disabled>
-
-        <div class="time-input">
-            <label>開始時間：<input type="text" id="startTime" value="00:01:20" placeholder="hh:mm:ss"></label>
-            <label>結束時間：<input type="text" id="endTime" value="00:10:45" placeholder="hh:mm:ss"></label>
+        <div class="form-group">
+            <label>選擇檔案：</label>
+            <input type="file" id="uploader" accept="video/*,audio/*" disabled>
         </div>
 
-        <button id="convertBtn" disabled>開始無損剪輯</button>
+        <div class="form-group">
+            <label>選擇功能：</label>
+            <select id="toolMode">
+                <option value="cut">🎬 影片無損秒切 (不傷畫質)</option>
+                <option value="mp3">🎵 提取音訊 (轉為 MP3)</option>
+                <option value="convert">💻 影片格式轉換 (相容性優化 MP4)</option>
+            </select>
+        </div>
+
+        <div id="timeInputSection" class="form-group time-input">
+            <label>開始時間：<input type="text" id="startTime" value="00:00:00" placeholder="hh:mm:ss"></label>
+            <label>結束時間：<input type="text" id="endTime" value="00:01:00" placeholder="hh:mm:ss"></label>
+        </div>
+
+        <button id="convertBtn" disabled>開始處理</button>
         <br><br>
 
-        <video id="outputVideo" controls width="100%" style="display:none;"></video>
+        <video id="outputVideo" controls width="100%" style="display:none; margin-top: 10px;"></video>
+        <audio id="outputAudio" controls style="display:none; width:100%; margin-top: 10px;"></audio>
         <br>
-        <a id="downloadLink" style="display:none; margin-top:10px; display:inline-block; color:#007bff; font-weight:bold;" download="完美剪輯版.mp4">📥 下載剪輯版影片</a>
+        <a id="downloadLink" style="display:none; margin-top:10px; display:inline-block; color:#3993ff; font-weight:bold; text-decoration: none;" download="處理完成檔案">📥 下載處理完成檔案</a>
     </div>
 
-    <!-- 全部改為自架檔案，不再依賴 unpkg CDN，避免 COEP require-corp 擋掉跨網域 Worker -->
     <script src="vendor/ffmpeg/ffmpeg.js"></script>
     <script src="vendor/util/ffmpeg-util.js"></script>
 
@@ -47,17 +61,18 @@
 
         const statusText = document.getElementById('status');
         const uploader = document.getElementById('uploader');
+        const toolMode = document.getElementById('toolMode');
+        const timeInputSection = document.getElementById('timeInputSection');
         const startTimeInput = document.getElementById('startTime');
         const endTimeInput = document.getElementById('endTime');
         const convertBtn = document.getElementById('convertBtn');
         const outputVideo = document.getElementById('outputVideo');
+        const outputAudio = document.getElementById('outputAudio');
         const downloadLink = document.getElementById('downloadLink');
 
         ffmpeg.on('log', ({ message }) => console.log(message));
 
         // 1. 初始化並載入 FFmpeg WebAssembly
-        // 用 toBlobURL 把同網域檔案讀成 Blob URL，避免 Worker 內部用自己的路徑當基準
-        // 解析 coreURL/wasmURL 導致相對路徑錯亂（找到 vendor/ffmpeg/vendor/core/... 這種錯誤路徑）
         async function loadFFmpeg() {
             try {
                 const baseURL = 'vendor/core';
@@ -65,7 +80,7 @@
                     coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
                     wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
                 });
-                statusText.innerText = "FFmpeg 載入成功！請選擇影片並輸入時間。";
+                statusText.innerText = "FFmpeg 載入成功！請選擇檔案並點擊開始。";
                 uploader.disabled = false;
             } catch (error) {
                 statusText.innerText = "載入失敗，瀏覽器可能不支援 SharedArrayBuffer。";
@@ -73,34 +88,85 @@
             }
         }
 
-        // 2. 處理檔案轉換
+        // 當功能切換時，動態隱藏/顯示時間輸入框
+        toolMode.addEventListener('change', () => {
+            if (toolMode.value === 'cut') {
+                timeInputSection.style.display = 'block';
+            } else {
+                timeInputSection.style.display = 'none';
+            }
+        });
+
+        // 2. 處理核心邏輯
         convertBtn.addEventListener('click', async () => {
             const file = uploader.files[0];
             if (!file) return;
 
-            const ss = startTimeInput.value.trim();
-            const to = endTimeInput.value.trim();
-
-            statusText.innerText = "正在極速剪輯中...";
+            statusText.innerText = "正在處理中，請稍候...";
             convertBtn.disabled = true;
+            
+            // 隱藏舊的播放器與下載連結
+            outputVideo.style.display = 'none';
+            outputAudio.style.display = 'none';
+            downloadLink.style.display = 'none';
+
+            const mode = toolMode.value;
+            const inputName = 'input_file';
+            let outputName = 'output.mp4';
+            let mimeType = 'video/mp4';
 
             try {
-                await ffmpeg.writeFile('input.mp4', await fetchFile(file));
-                await ffmpeg.exec(['-ss', ss, '-to', to, '-i', 'input.mp4', '-c', 'copy', 'output.mp4']);
-                const data = await ffmpeg.readFile('output.mp4');
+                // 將檔案寫入 FFmpeg 虛擬虛擬檔案系統
+                await ffmpeg.writeFile(inputName, await fetchFile(file));
 
-                const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-                const videoUrl = URL.createObjectURL(videoBlob);
+                // 根據選擇的功能，執行不同的 FFmpeg 指令
+                if (mode === 'cut') {
+                    const ss = startTimeInput.value.trim();
+                    const to = endTimeInput.value.trim();
+                    outputName = 'cut_output.mp4';
+                    // -c copy 代表無損秒切（速度極快）
+                    await ffmpeg.exec(['-ss', ss, '-to', to, '-i', inputName, '-c', 'copy', outputName]);
+                    mimeType = 'video/mp4';
 
-                outputVideo.src = videoUrl;
-                outputVideo.style.display = 'block';
+                } else if (mode === 'mp3') {
+                    outputName = 'audio_output.mp3';
+                    mimeType = 'audio/mp3';
+                    // 提取音訊，轉碼為高音質 MP3 (-q:a 2 接近 192kbps VBR)
+                    await ffmpeg.exec(['-i', inputName, '-vn', '-q:a', '2', outputName]);
 
-                downloadLink.href = videoUrl;
+                } else if (mode === 'convert') {
+                    outputName = 'converted_output.mp4';
+                    mimeType = 'video/mp4';
+                    // 萬用格式轉碼：將各類影片強制編碼為 H.264 影片 + AAC 音訊，確保瀏覽器絕對可播
+                    await ffmpeg.exec(['-i', inputName, '-vcodec', 'libx264', '-acodec', 'aac', '-pix_fmt', 'yuv420p', outputName]);
+                }
+
+                // 讀取處理完的檔案
+                const data = await ffmpeg.readFile(outputName);
+                const blob = new Blob([data.buffer], { type: mimeType });
+                const resUrl = URL.createObjectURL(blob);
+
+                // 根據結果是影片還是音訊，展示對應的播放器
+                if (mode === 'mp3') {
+                    outputAudio.src = resUrl;
+                    outputAudio.style.display = 'block';
+                    downloadLink.download = file.name.substring(0, file.name.lastIndexOf('.')) + '.mp3';
+                } else {
+                    outputVideo.src = resUrl;
+                    outputVideo.style.display = 'block';
+                    downloadLink.download = 'fixed_' + file.name.substring(0, file.name.lastIndexOf('.')) + '.mp4';
+                }
+
+                downloadLink.href = resUrl;
                 downloadLink.style.display = 'block';
+                statusText.innerText = "處理完成！";
 
-                statusText.innerText = "剪輯完成！";
+                // 清理虛擬檔案系統釋放記憶體
+                await ffmpeg.deleteFile(inputName);
+                await ffmpeg.deleteFile(outputName);
+
             } catch (error) {
-                statusText.innerText = "剪輯失敗，請檢查時間格式或檔案。";
+                statusText.innerText = "處理失敗，請檢查檔案格式或時間設定。";
                 console.error(error);
             } finally {
                 convertBtn.disabled = false;
