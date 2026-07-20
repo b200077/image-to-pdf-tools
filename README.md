@@ -1,3 +1,5 @@
+[ English ](README_EN.md) | [ 繁體中文 ](README.md)
+
 # 🔒 極速本地隱私工具箱 (Local Privacy Toolkits)
 
 [![GitHub license](https://img.shields.io/github/license/b200077/local-tools?color=blue)](LICENSE)
@@ -6,6 +8,13 @@
 一個專為個人與企業用戶打造的**「100% 本地運算、斷網可用」**網頁工具箱。所有檔案的解析、轉換、打包工作，全部直接在您的本機瀏覽器內完成。
 
 > 💡 **核心承諾**：您的機密合約、客戶個資、公司財務報表，**絕對不會上傳到任何伺服器**。我們從不收集、也無法收集您的任何資料。
+
+🛡️ 資安與隱私使用建議
+為了確保您的極致隱私，強烈建議您**「開啟瀏覽器的無痕模式（隱私視窗）」**來使用本工具。
+這能有效防止：
+1. 瀏覽器惡意擴充功能（Extensions）側錄您的網頁內容。
+2. 暫存檔與記憶體殘留留在公用電腦中。
+3. 關閉視窗後，所有當次處理的機密資料隨即從瀏覽器記憶體中徹底釋放。
 
 ---
 
@@ -52,10 +61,12 @@
 
 ## 📦 技術棧 (Tech Stack)
 
-*   **Frontend**: HTML5, CSS3, JavaScript (Vanilla ES6)
-*   **PDF Engine**: [pdf-lib](https://github.com/Hopding/pdf-lib)
-*   **Data Parser**: [SheetJS (xlsx)](https://github.com/SheetJS/sheetjs)
-*   **Deployment**: GitHub Pages
+* **Frontend**: HTML5, CSS3, JavaScript (Vanilla ES6)
+* **PDF Engine**: [pdf-lib](https://github.com/Hopding/pdf-lib)
+* **Data Parser**: [SheetJS (xlsx)](https://github.com/SheetJS/sheetjs)
+* **Audio/Video Engine**: [FFmpeg WASM (WebAssembly)](https://github.com/ffmpegwasm/ffmpegwasm) 
+* **Browser Security**: `coi-serviceworker` (啟用 Cross-Origin Isolation 以支援 SharedArrayBuffer 高效能運算)
+* **Deployment**: GitHub Pages
 
 ---
 
