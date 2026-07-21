@@ -10,16 +10,23 @@
 
 ---
 
-## 🛠 Available Tools
+### 🛠 Tools List
 
-### 1. 🖼 Image to PDF Converter
-* [cite_start]**Description**: Fast batch conversion of JPG and PNG images into a single PDF file in the browser.
-* [cite_start]**Tech**: Uses `pdf-lib` for async binary reading and PDF serialization.
-* [cite_start]**Use Cases**: ID scans, contract packaging, and private album backups.
+1. 🖼 **Image to PDF Tool**
+   * **Description**: Convert multiple JPG/PNG images into a single PDF directly in your browser.
+   * **Tech**: Built with `pdf-lib` for async binary processing to prevent browser UI freezing.
 
-### 2. 📊 Excel Converter (XLSX to CSV/JSON)
-* [cite_start]**Description**: Convert `.xlsx` or `.xls` files into raw CSV or structured JSON format. [cite_start]Supports multi-sheet workbook exporting.
-* [cite_start]**Tech**: Powered by SheetJS with **UTF-8 BOM header** support to ensure proper character encoding when opened in MS Excel.
+2. 📊 **Excel Converter (Excel to CSV/JSON)**
+   * **Description**: Convert `.xlsx` or `.xls` files into CSV or JSON formats with multi-sheet support.
+   * **Tech**: Powered by `SheetJS (xlsx)` with automatic UTF-8 BOM injection to ensure Chinese characters display correctly in Excel on Windows.
+
+3. 🎥 **Local Video / Audio Converter & Trimmer (FFmpeg WebAssembly)**
+   * **Description**: Losslessly trim videos or convert media formats locally inside your browser without uploading to any server.
+   * **Tech**: Utilizes `FFmpeg.wasm` and `coi-serviceworker` to perform client-side media processing and high-performance video cutting.
+
+4. 📄 **Local PDF & PPTX Text Extractor**
+   * **Description**: Extract plain text from PDF and PowerPoint (`.pptx`) documents locally with 100% data privacy.
+   * **Tech**: Client-side document parsing to process slide decks and PDFs completely offline.
 
 ---
 
@@ -37,3 +44,5 @@
 * [cite_start]**Frontend**: HTML5, CSS3, JavaScript (Vanilla ES6) [cite: 22]
 * [cite_start]**Libraries**: [pdf-lib](https://github.com/Hopding/pdf-lib), [SheetJS](https://github.com/SheetJS/sheetjs) [cite: 22]
 * [cite_start]**Hosting**: GitHub Pages [cite: 22]
+
+⭐ **If you find this project helpful, please consider giving it a Star! It really helps support the project.**
