@@ -1,6 +1,6 @@
 // 1. 定義全站翻譯字典
 const translations = {
-  zh: {
+    zh: {
     // 通用 / Navbar / Footer
     brand_name: "🔒 極速本地隱私工具箱",
     nav_home: "← 首頁",
@@ -118,7 +118,7 @@ const translations = {
     img_pdf_status_generating: "⚡ Packaging PDF locally, please wait...",
     img_pdf_status_success: "🎉 PDF downloaded successfully!",
     img_pdf_status_cleared: "Cleared all images",
-    img_pdf_status_empty: "Please select at least one image!"
+    img_pdf_status_empty: "Please select at least one image!",
 
     // 2. Excel Converter (excel-tool.html)
     excel_page_title: "Secure Excel to CSV/JSON - 100% Local & Private",
